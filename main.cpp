@@ -25,6 +25,30 @@ void testDynamicArray() {
     std::cout << "\n";
 }
 
+void* thr_func(void *arg)
+{
+    Test* p = (Test*)arg;
+    p->print();
+    return nullptr;
+}
+
+void testThreadSafety()
+{
+    std::cout << "\n--- 测试线程安全 ---\n";
+    my_shared_ptr<Test> t(new Test());
+
+    pthread_t tids[100];
+    for (int i = 0; i < 10; i++)
+    {
+        pthread_create(&tids[i], nullptr, thr_func, &t);
+    }
+
+    for (int i = 0; i < 10; i++)
+    {
+        pthread_join(tids[i], nullptr);
+    }
+}
+
 int main()
 {
     {
@@ -45,6 +69,8 @@ int main()
     }
 
     testDynamicArray();
+
+    testThreadSafety();
 
     return 0;
 }

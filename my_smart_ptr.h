@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <limits>
 
+#include "locker.h"
+
 template<typename T>
 class my_shared_ptr
 {
@@ -22,10 +24,12 @@ public:
         {
             m_count = new size_t(0);
         }
+
+        m_lock = new locker();
     }
 
     // 拷贝构造
-    my_shared_ptr(const my_shared_ptr& _ptr) : m_ptr(_ptr.m_ptr), deleter(_ptr.deleter), m_count(_ptr.m_count)
+    my_shared_ptr(const my_shared_ptr& _ptr) : m_ptr(_ptr.m_ptr), deleter(_ptr.deleter), m_count(_ptr.m_count), m_lock(_ptr.m_lock)
     {
         inc_count();
     }
@@ -39,6 +43,7 @@ public:
             m_ptr = _ptr.m_ptr;
             deleter = _ptr.deleter;
             m_count = _ptr.m_count;
+            m_lock = _ptr.m_lock;
             inc_count();
         }
         return *this;
@@ -46,9 +51,9 @@ public:
 
     // 移动构造
     my_shared_ptr(my_shared_ptr&& _ptr) noexcept
-        : m_ptr(_ptr.m_ptr), deleter(_ptr.deleter), m_count(_ptr.m_count)
+        : m_ptr(_ptr.m_ptr), deleter(_ptr.deleter), m_count(_ptr.m_count), m_lock(_ptr.m_lock)
     {
-        _ptr.m_ptr = _ptr.deleter = _ptr.m_count = nullptr;
+        _ptr.m_ptr = _ptr.deleter = _ptr.m_count = _ptr.m_lock = nullptr;
     }
 
     // 移动赋值
@@ -60,7 +65,8 @@ public:
             m_ptr = _ptr.m_ptr;
             deleter = _ptr.deleter;
             m_count = _ptr.m_count;
-            _ptr.m_ptr = _ptr.m_count = _ptr.deleter = nullptr;
+            m_lock = _ptr.m_lock;
+            _ptr.m_ptr = _ptr.m_count = _ptr.deleter = _ptr.m_lock = nullptr;
         }
         return *this;
     }
@@ -101,25 +107,36 @@ public:
 
     size_t use_count() const
     {
-        size_t count = m_count ? *m_count : 0;
+        size_t count = 0;
+
+        m_lock->lock();
+        if (m_count)
+        {
+            count = *m_count;
+        }
+        m_lock->unlock();
+
         return count;
     }
 
 private:
     void inc_count()
     {
+        m_lock->lock();
         if (m_count)
         {
             ++(*m_count);
         }
+        m_lock->unlock();
     }
 
     void dec_count()
     {
+        m_lock->lock();
         if (m_count)
         {
             --(*m_count);
-            if (*m_count <= 0)
+            if (*m_count == 0)
             {
                 if (m_ptr)
                 {
@@ -135,16 +152,20 @@ private:
 
                 delete m_count;
                 deleter = nullptr;
+                m_lock->unlock();
+                delete m_lock;
                 
                 return;
             }
         }
+        m_lock->unlock();
     }
 
 private:
     T* m_ptr;
     size_t* m_count;
-    void(*deleter)(T*);
+    deleter_func deleter;
+    locker* m_lock;
 };
 
 #endif
