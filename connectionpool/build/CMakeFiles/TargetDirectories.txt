@@ -1,0 +1,3 @@
+/home/yzq/github/some_implementation/connectionpool/build/CMakeFiles/myConnectionPool.dir
+/home/yzq/github/some_implementation/connectionpool/build/CMakeFiles/edit_cache.dir
+/home/yzq/github/some_implementation/connectionpool/build/CMakeFiles/rebuild_cache.dir
